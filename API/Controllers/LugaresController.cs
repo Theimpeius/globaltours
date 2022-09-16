@@ -7,6 +7,9 @@ using Core.Entidades;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Core.Interfaces;
+using Core.Especificaciones;
+using AutoMapper;
+using API.Dtos;
 
 namespace API.Controllers
 {
@@ -14,24 +17,43 @@ namespace API.Controllers
     [Route("api/[controller]")]
     public class LugaresController : ControllerBase
     {
-        public readonly ILugarRepositorio _repo;
-        public LugaresController(ILugarRepositorio repo)
+        private readonly IRepositorio<Lugar> _lugarRepo;
+        private readonly IRepositorio<Pais> _paisRepo;
+        private readonly IRepositorio<Categoria> _categoriaRepo;
+        private readonly IMapper _mapper;
+        public LugaresController(IRepositorio<Lugar> lugarRepo, IRepositorio<Pais> paisRepo, IRepositorio<Categoria> categoriaRepo, IMapper mapper)
         {
-            _repo = repo;
+            _mapper = mapper;
+            _categoriaRepo = categoriaRepo;
+            _paisRepo = paisRepo;
+            _lugarRepo = lugarRepo;
             
         }
 
         [HttpGet]
-        public async Task<ActionResult<List<Lugar>>> GetLugares()
+        public async Task<ActionResult<IReadOnlyList<LugarDto>>> GetLugares()
         {
-            var lugares = await _repo.GetLugaresAsync();
+            var espec = new LugaresConPaisCategoriaEspecificacion();
+            var lugares = await _lugarRepo.ObtenerTodosEspec(espec);
 
-            return Ok(lugares);
+            return Ok(_mapper.Map<IReadOnlyList<Lugar>,IReadOnlyList<LugarDto>>(lugares));
         }
         [HttpGet("{id}")]
-        public async Task<ActionResult<Lugar>>GetLugar(int id)
+        public async Task<ActionResult<LugarDto>>GetLugar(int id)
         {
-            return await _repo.GetLugarAsync(id);
+            var espec = new LugaresConPaisCategoriaEspecificacion(id);
+            var lugar = _lugarRepo.ObtenerEspec(espec);
+            return _mapper.Map<Lugar,LugarDto>(await lugar);
+        }
+        [HttpGet("paises")]
+        public async Task<ActionResult<List<Pais>>>GetPaises()
+        {
+            return Ok(await _paisRepo.ObtenerTodosAsync());
+        }
+        [HttpGet("categoria")]
+        public async Task<ActionResult<List<Categoria>>>GetCategorias()
+        {
+            return Ok(await _categoriaRepo.ObtenerTodosAsync());
         }
     }
 }
